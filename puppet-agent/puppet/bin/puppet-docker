@@ -1,0 +1,105 @@
+#!/usr/bin/ruby
+require 'yaml'
+
+# One of the tricks we use is that we set the hostname to whatever name is
+# used on the certificate that was given to us; this is crucial for duping
+# 'puppet agent' into thinking it is really the machine that owns the
+# certificate.
+#
+# We also set the 'container' fact to 'docker' and the 'build' fact to true
+# so that manifests can distinguish whether they should produce a catalog
+# for the actual node whose certs we are using or a 'container build'
+# catalog.
+def env_facts(hash)
+  hash.map { |k,v| "FACTER_#{k}='#{v}'" }.join(" ")
+end
+
+def run(command)
+  system(command)
+  unless $? == 0
+    $stderr.puts "Command failed: #{$?}"
+    $stderr.puts "  command was: #{command}"
+    exit 1
+  end
+end
+
+def data
+  @data ||= YAML.load(DATA.read)
+end
+
+def config
+  unless @config
+    @config = File::open("config.yaml", "r") do |fp|
+      YAML::load(fp)
+    end
+    # Default values
+    @config["ssl"] ||= {}
+    @config["ssl"]["ca"] ||= "ssl/ca.pem"
+    @config["ssl"]["private"] ||= "ssl/agent-private.pem"
+    @config["ssl"]["public"] ||= "ssl/agent-public.pem"
+  end
+  @config
+end
+
+# Put certificates in the right place for 'puppet agent'
+def puppet_setup
+  setup = %w[ca cert private public].inject({}) do |s, n|
+    s["#{n}_pem"] = File::join(Dir.pwd, config['ssl'][n])
+    s
+  end
+  setup['info_yaml'] = File::join(Dir.pwd, "info.yaml")
+  # Spoof identity
+  setup['hostname'] = config['certname']
+
+  run "#{env_facts(setup)} puppet apply --log_level warning <<'EOF'\n#{data['setup']}\nEOF\n"
+end
+
+def puppet_agent
+  options = ["--onetime", "--no-daemonize"]
+  options << "--server #{config['server']}" if config["server"]
+
+  facts = config['facts'].dup
+  facts['hostname'] = config['certname']
+
+  run "#{env_facts(facts)} puppet agent #{options.join(" ")} "
+end
+
+#
+# Main part of the script
+#
+Dir.chdir(File::expand_path("..", File::dirname(__FILE__)))
+puppet_setup
+puppet_agent
+
+# @todo lutter 2014-05-30: clean up $ssldir and this dir
+
+__END__
+---
+# The Puppet manifest that gets us set up for the agent run
+setup: |
+  File {
+    owner  => puppet,
+    group => puppet,
+    mode => 666
+  }
+
+  file { "${settings::localcacert}":
+    source => "$ca_pem"
+  }
+
+  file { "${settings::ssldir}/certs/${settings::certname}.pem":
+    source => "$cert_pem"
+  }
+
+  file { "${settings::publickeydir}/${settings::certname}.pem":
+    source => "$public_pem"
+  }
+
+  file { "${settings::privatekeydir}/${settings::certname}.pem":
+    source => "$private_pem",
+    mode => 640
+  }
+
+  file { "$info_yaml":
+    content => "---\nvardir: ${settings::vardir}\ncertname: ${settings::certname}\n"
+  }

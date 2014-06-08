@@ -1,0 +1,18 @@
+#! /bin/bash
+
+src=$1
+if [ -z "$1" ]; then
+    echo "Usage: steal-keys HOSTNAME"
+    echo "Copy the puppet client keys from HOSTNAME into ssl/"
+    exit 1
+fi
+
+ssldir=$1:/var/lib/puppet/ssl
+
+cd $(dirname $0)/..
+
+mkdir -p ssl
+scp $ssldir/certs/ca.pem ssl/ca.pem
+scp $ssldir/certs/docker.pem ssl/agent-cert.pem
+scp $ssldir/public_keys/\* ssl/agent-public.pem
+scp $ssldir/private_keys/\* ssl/agent-private.pem

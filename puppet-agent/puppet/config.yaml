@@ -1,0 +1,13 @@
+---
+# This must be set to the name used in the certificates we use. We should
+# really read it from there.
+certname: docker
+# server: where the puppet master is
+facts:
+  container: docker
+  build: true
+ssl:
+  ca: ssl/ca.pem
+  cert: ssl/agent-cert.pem
+  private: ssl/agent-private.pem
+  public: ssl/agent-public.pem
