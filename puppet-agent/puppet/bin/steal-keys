@@ -1,18 +1,51 @@
 #! /bin/bash
 
-src=$1
-if [ -z "$1" ]; then
-    echo "Usage: steal-keys HOSTNAME"
+function usage() {
+    echo "Usage: steal-keys HOSTNAME [CERTNAME]"
     echo "Copy the puppet client keys from HOSTNAME into ssl/"
+    echo
+    echo "Provide a CERTNAME when copying from a Puppet master; if" \
+    "no CERTNAME is given"
+    echo "assume HOSTNAME is a Puppet client"
+}
+
+if [ -z "$1" ]; then
+    usage
     exit 1
 fi
 
+if [ "$1" = "-h" -o "$1" = "--help" ]; then
+    usage
+    exit 0
+fi
+
 ssldir=$1:/var/lib/puppet/ssl
+certname=$2
 
 cd $(dirname $0)/..
 
 mkdir -p ssl
-scp $ssldir/certs/ca.pem ssl/ca.pem
-scp $ssldir/certs/docker.pem ssl/agent-cert.pem
-scp $ssldir/public_keys/\* ssl/agent-public.pem
-scp $ssldir/private_keys/\* ssl/agent-private.pem
+rm -f ssl/agent-cert.pem ssl/agent-private.pem ssl/agent-public.pem ssl/ca.pem
+
+if [ -z "$certname" ]; then
+    # Copy from a Puppet client where we expect only one client cert
+    scp $ssldir/certs/\* ssl/
+    nfiles=$(find ssl -name '*.pem' -printf x | wc -c)
+    if [ $nfiles -gt 2 ]; then
+        echo
+        echo "Expected to copy only the CA and the client cert "\
+        "but copied $nfiles files instead."
+        echo "Maybe you meant to provide a CERTNAME ?"
+        exit 1
+    fi
+    # This is where we assume there's only one cert
+    client_cert=$(ls -1 ssl/*.pem | grep -v ca.pem)
+    mv $client_cert ssl/agent-cert.pem
+    scp $ssldir/public_keys/\* ssl/agent-public.pem
+    scp $ssldir/private_keys/\* ssl/agent-private.pem
+else
+    scp $ssldir/certs/ca.pem ssl/ca.pem
+    scp $ssldir/certs/$certname.pem ssl/agent-cert.pem
+    scp $ssldir/public_keys/${certname}.pem ssl/agent-public.pem
+    scp $ssldir/private_keys/${certname}.pem ssl/agent-private.pem
+fi
