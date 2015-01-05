@@ -58,7 +58,8 @@ build, the `site.pp` can treat that certificate like any other host:
       # describe what should go into the container image
     }
 
-## Running `puppet agent` during a Docker build, simple
+## Running `puppet agent` during a Docker build
+### Basic usage
 
 The `puppet-agent/Dockerfile` shows how to run `puppet agent` while
 building with Docker.
@@ -70,8 +71,7 @@ container image above.
 Once you've done that, just run `docker build puppet-agent` as you usually
 would.
 
-## Running `puppet agent`, during a Docker build, advanced
-
+### Advanced usage
 If you want to use a puppetmaster that is not reachable as "puppet", but via an ip address
 You can use this line to do that:
 
@@ -113,6 +113,3 @@ new puppetrun.
 
 It is strongly adviced to have these steps as late as possible in your Dockerfile, so that Docker
 can cache as much steps as possible (like installing puppet, or adding files etc)
-
-
-
