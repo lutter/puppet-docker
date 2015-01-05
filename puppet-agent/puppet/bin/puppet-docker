@@ -15,7 +15,8 @@ def env_facts(hash)
 end
 
 def run(command)
-  system(command)
+  output = `#{command}`
+  puts output
   unless $? == 0
     $stderr.puts "Command failed: #{$?}"
     $stderr.puts "  command was: #{command}"
@@ -55,7 +56,7 @@ def puppet_setup
 end
 
 def puppet_agent
-  options = ["--onetime", "--no-daemonize"]
+  options = ["--onetime", "--no-daemonize", "--test", "--verbose", "--detailed-exitcodes"]
   options << "--server #{config['server']}" if config["server"]
 
   facts = config['facts'].dup

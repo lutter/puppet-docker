@@ -1,0 +1,9 @@
+#!/bin/bash
+
+mkdir -p ssl
+sudo cp /var/lib/puppet/ssl/certs/ca.pem ssl/ca.pem
+sudo cp /var/lib/puppet/ssl/certs/docker.pem ssl/agent-cert.pem
+sudo cp /var/lib/puppet/ssl/public_keys/docker.pem ssl/agent-public.pem
+sudo cp /var/lib/puppet/ssl/private_keys/docker.pem ssl/agent-private.pem
+
+sudo chmod 744 ssl/*
