@@ -88,7 +88,7 @@ This is a problem because exiting with a !0 value will break your Docker build.
 ## Working around the cache of Docker
 
 Say you are in a situation where you have succeffully build a docker image, and later you 
-changed some puppet code that has to be included in yout docker image. 
+changed some puppet code that has to be included in your docker image. 
 
 If you simply run "docker build ." again, puppet will not run because the command itself did not change.
 This mechanism is normally one of the avantages of Docker, and is called caching.
